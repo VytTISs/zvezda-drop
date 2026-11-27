@@ -1,13 +1,1 @@
-{
-  "name": "telegram-gift-case-simulator",
-  "version": "1.0.1",
-  "private": true,
-  "description": "Free Telegram Mini App gift case simulator",
-  "main": "bot.js",
-  "scripts": { "start": "node bot.js" },
-  "dependencies": {
-    "dotenv": "^16.4.7",
-    "express": "^4.21.2",
-    "telegraf": "^4.16.3"
-  }
-}
+{"name":"zvezda-drop-v2","version":"2.0.0","scripts":{"start":"node bot.js"},"dependencies":{"dotenv":"^16.4.5","express":"^4.21.2","telegraf":"^4.16.3"}}
