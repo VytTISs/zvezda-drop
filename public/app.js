@@ -1,59 +1,19 @@
-const tg = window.Telegram?.WebApp;
-if (tg) { tg.ready(); tg.expand(); }
-
-const gifts = [
-  {name:"Plush Pepe",emoji:"🐸",rarity:"Легендарный",weight:3},
-  {name:"Precious Ring",emoji:"💍",rarity:"Легендарный",weight:4},
-  {name:"Heart",emoji:"❤️",rarity:"Эпический",weight:10},
-  {name:"Toy Bear",emoji:"🧸",rarity:"Редкий",weight:18},
-  {name:"Bunny",emoji:"🐰",rarity:"Редкий",weight:25},
-  {name:"Rose",emoji:"🌹",rarity:"Обычный",weight:40}
-];
-const cases = [
-  {id:"bear",name:"Bear Case",desc:"Подарки с милыми персонажами",emoji:"🧸",price:80,pool:["Toy Bear","Bunny","Rose","Heart"]},
-  {id:"luxury",name:"Luxury Case",desc:"Редкие и ценные находки",emoji:"💍",price:180,pool:["Precious Ring","Heart","Plush Pepe"]},
-  {id:"heart",name:"Heart Case",desc:"Коллекция сердечек",emoji:"❤️",price:100,pool:["Heart","Rose","Precious Ring"]},
-  {id:"pepe",name:"Pepe Case",desc:"Кейс с лягушкой Pepe",emoji:"🐸",price:220,pool:["Plush Pepe","Toy Bear","Heart"]},
-  {id:"mystery",name:"Mystery Case",desc:"Сюрприз из разных коллекций",emoji:"🎁",price:140,pool:gifts.map(g=>g.name)}
-];
-let balance = Number(localStorage.getItem("gcs_balance") || 500);
-let inventory = JSON.parse(localStorage.getItem("gcs_inventory") || "[]");
-let currentCase = null;
-const $ = id => document.getElementById(id);
-const giftByName = name => gifts.find(g=>g.name===name);
-function save(){localStorage.setItem("gcs_balance",balance);localStorage.setItem("gcs_inventory",JSON.stringify(inventory));}
-function render(){
-  $("balance").textContent=balance;
-  $("cases").innerHTML=cases.map(c=>`<article class="case-card"><div class="case-art">${c.emoji}</div><h3>${c.name}</h3><p>${c.desc}</p><div class="case-bottom"><span class="price">🪙 ${c.price}</span><button class="open-btn" data-case="${c.id}" ${balance<c.price?"disabled":""}>Открыть</button></div></article>`).join("");
-  $("inventoryCount").textContent=`${inventory.length} GIFTS`;
-  $("inventory").className=inventory.length?"inventory":"inventory empty";
-  $("inventory").innerHTML=inventory.length?`<div class="inventory-items">${inventory.slice().reverse().map(g=>`<div class="gift-item"><div class="emoji">${g.emoji}</div><b>${g.name}</b><small>${g.rarity}</small></div>`).join("")}</div>`:"Пока пусто. Открой первый кейс!";
-}
-function weightedPick(pool){
-  const list=pool.map(giftByName).filter(Boolean);const total=list.reduce((s,g)=>s+g.weight,0);let r=Math.random()*total;
-  for(const g of list){r-=g.weight;if(r<=0)return g;}return list[list.length-1];
-}
-function openCase(c){
-  if(balance<c.price)return;
-  currentCase=c;balance-=c.price;save();render();
-  $("opening").classList.remove("hidden");$("openingTitle").textContent=c.name;
-  $("result").classList.add("hidden");$("openAgain").classList.add("hidden");
-  const winner=weightedPick(c.pool);
-  const reel=$("reel");reel.style.transition="none";reel.style.transform="translateX(0)";
-  const items=Array.from({length:35},(_,i)=>i===29?winner:weightedPick(c.pool));
-  reel.innerHTML=items.map(g=>`<div class="reel-item">${g.emoji}</div>`).join("");
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{
-    reel.style.transition="transform 3.5s cubic-bezier(.08,.72,.08,1)";
-    const itemWidth=93;const offset=29*itemWidth+42-($("reel").parentElement.clientWidth/2);
-    reel.style.transform=`translateX(-${offset}px)`;
-  }));
-  setTimeout(()=>{
-    inventory.push(winner);save();render();
-    $("result").innerHTML=`<div class="gift-big">${winner.emoji}</div><h3>${winner.name}</h3><div>${winner.rarity}</div><small>Добавлено в коллекцию</small>`;
-    $("result").classList.remove("hidden");$("openAgain").classList.remove("hidden");
-  },3650);
-}
-$("cases").addEventListener("click",e=>{const btn=e.target.closest("[data-case]");if(btn){const c=cases.find(x=>x.id===btn.dataset.case);if(c)openCase(c);}});
-$("closeOpening").addEventListener("click",()=>$("opening").classList.add("hidden"));
-$("openAgain").addEventListener("click",()=>{if(currentCase)openCase(currentCase);});
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const base={balance:500,inventory:[],opened:0,lastDaily:"",games:0};let state;try{state={...base,...JSON.parse(localStorage.zd2||"{}")}}catch{state={...base}}
+const gifts=[{name:"Плюшевый мишка",emoji:"🧸",rarity:"Обычный",value:45,w:42},{name:"Сияющее сердце",emoji:"💝",rarity:"Обычный",value:55,w:30},{name:"Букет цветов",emoji:"💐",rarity:"Редкий",value:95,w:15},{name:"Золотое кольцо",emoji:"💍",rarity:"Редкий",value:150,w:8},{name:"Праздничный торт",emoji:"🎂",rarity:"Эпический",value:280,w:3},{name:"Космическая ракета",emoji:"🚀",rarity:"Легендарный",value:650,w:1.5},{name:"Звёздная корона",emoji:"🌟",rarity:"Мифический",value:1200,w:.5}];
+const cases=[{id:"start",name:"Стартовый",desc:"Первый шаг в коллекцию",price:100,emoji:"🎁",tag:"ДЛЯ НОВИЧКОВ"},{id:"pro",name:"Премиум",desc:"Повышенный шанс редких подарков",price:250,emoji:"💎",tag:"ПОПУЛЯРНЫЙ"},{id:"royal",name:"Королевский",desc:"Охота за легендарными",price:500,emoji:"👑",tag:"ВЫСОКАЯ РЕДКОСТЬ"}];
+function save(){localStorage.zd2=JSON.stringify(state);render()}function lvl(){return 1+Math.floor(state.opened/5)+Math.floor(state.games/10)}
+function render(){$("#balance").textContent=state.balance.toLocaleString("ru");$("#count").textContent=state.inventory.length;$("#opened").textContent=state.opened;$("#level").textContent=lvl();$("#profileInfo").innerHTML=`<div>Баланс: <b>✦ ${state.balance}</b><br>Подарков: ${state.inventory.length}<br>Открытий: ${state.opened}<br>Уровень: ${lvl()}</div>`;
+$("#caseGrid").innerHTML=cases.map(c=>`<article class="case"><small>${c.tag}</small><div class="art">${c.emoji}</div><h3>${c.name}</h3><p>${c.desc}</p><div class="bottom">✦ ${c.price}<button data-case="${c.id}">Открыть</button></div></article>`).join("");
+$("#items").innerHTML=state.inventory.length?state.inventory.slice().reverse().map((g,j)=>`<article class="item"><div class="emoji">${g.emoji}</div><h3>${g.name}</h3><p>${g.rarity} · ✦ ${g.value}</p><button data-sell="${state.inventory.length-1-j}">Продать за ✦ ${Math.floor(g.value*.7)}</button></article>`).join(""):`<div class="empty">Инвентарь пуст. Открой первый кейс!</div>`}
+function draw(id){let pool=gifts.map(g=>({...g}));if(id==="pro")pool.forEach(g=>g.w*=({"Обычный":.7,"Редкий":1.5,"Эпический":2,"Легендарный":2.5,"Мифический":3}[g.rarity]));if(id==="royal")pool.forEach(g=>g.w*=({"Обычный":.35,"Редкий":1,"Эпический":2.5,"Легендарный":4,"Мифический":5}[g.rarity]));let n=Math.random()*pool.reduce((s,g)=>s+g.w,0);for(let g of pool){n-=g.w;if(n<=0)return g}return pool[0]}
+let pending=null;$("#caseGrid").onclick=e=>{let b=e.target.closest("[data-case]");if(!b)return;let c=cases.find(x=>x.id===b.dataset.case);if(state.balance<c.price)return alert("Не хватает виртуальных звёзд. Сыграй в мини-игру или забери бонус.");state.balance-=c.price;state.opened++;pending=draw(c.id);save();$("#dropEmoji").textContent=pending.emoji;$("#dropName").textContent=pending.name;$("#dropRarity").textContent=pending.rarity.toUpperCase();$("#dropValue").textContent="Ценность: ✦ "+pending.value;$("#modal").classList.remove("hidden")};
+function close(){if(pending){state.inventory.push(pending);pending=null;save()}$("#modal").classList.add("hidden")}$("#claim").onclick=close;$("#close").onclick=()=>$("#modal").classList.add("hidden");
+$("#items").onclick=e=>{let b=e.target.closest("[data-sell]");if(!b)return;let i=+b.dataset.sell,g=state.inventory[i];state.balance+=Math.floor(g.value*.7);state.inventory.splice(i,1);save()};
+$$("nav button").forEach(b=>b.onclick=()=>{$$("nav button").forEach(x=>x.classList.toggle("active",x===b));$$(".view").forEach(x=>x.classList.toggle("active",x.id===b.dataset.tab))});$$("[data-go]").forEach(b=>b.onclick=()=>{const t=b.dataset.go;$$("nav button").forEach(x=>x.classList.toggle("active",x.dataset.tab===t));$$(".view").forEach(x=>x.classList.toggle("active",x.id===t))});
+$("#daily").onclick=()=>{let d=new Date().toLocaleDateString();if(state.lastDaily===d)return alert("Бонус уже получен сегодня.");state.lastDaily=d;state.balance+=100;save();alert("Получено 100 виртуальных звёзд!")};
+function stage(html){$("#stage").innerHTML=html;$("#stage").classList.remove("hidden");$("#stage").scrollIntoView({behavior:"smooth",block:"center"})}
+$("#tapStart").onclick=()=>{let n=0,t=15;stage(`<h3>Звёздный тап</h3><p>Осталось <b id="tt">15</b> сек.</p><button class="tap" id="tap">✦</button><p>Нажатий: <b id="tn">0</b></p>`);let timer=setInterval(()=>{$("#tt").textContent=--t;if(t<=0){clearInterval(timer);let r=Math.min(100,n*2);state.balance+=r;state.games++;save();$("#stage").insertAdjacentHTML("beforeend",`<p>Раунд окончен: +${r} ✦</p>`)}},1000);$("#tap").onclick=()=>{$("#tn").textContent=++n}}
+$("#memoryStart").onclick=()=>{let sy=["🍀","🎁","⭐","💎","🌙","🧸","🎈","💜"],deck=[...sy,...sy].sort(()=>Math.random()-.5),first=null,lock=false,matched=0,tries=0;stage(`<h3>Найди пары</h3><div class="board">${deck.map((_,i)=>`<button class="cell" data-i="${i}">?</button>`).join("")}</div><p>Попытки: <b id="tries">0</b></p>`);$$(".cell").forEach(b=>b.onclick=()=>{if(lock||b.disabled||b.textContent!=="?")return;let i=+b.dataset.i;b.textContent=deck[i];if(!first){first=b;return}tries++;$("#tries").textContent=tries;if(first.textContent===b.textContent){first.disabled=b.disabled=true;first=null;if(++matched===8){let r=Math.max(20,100-tries*3);state.balance+=r;state.games++;save();$("#stage").insertAdjacentHTML("beforeend",`<p>Победа! +${r} ✦</p>`)}}else{lock=true;let old=first;first=null;setTimeout(()=>{old.textContent="?";b.textContent="?";lock=false},650)}})}
+$("#reactionStart").onclick=()=>{stage(`<h3>Проверка реакции</h3><p>Нажми, когда поле станет зелёным.</p><button class="reaction" id="react">ЖДИ СИГНАЛА…</button>`);let ready=false,done=false,tm=setTimeout(()=>{ready=true;$("#react").classList.add("ready");$("#react").textContent="ЖМИ СЕЙЧАС!"},1200+Math.random()*3500);$("#react").onclick=()=>{if(done)return;done=true;clearTimeout(tm);if(!ready){$("#react").textContent="Слишком рано. Запусти ещё раз.";return}state.balance+=35;state.games++;save();$("#react").textContent="Отлично! +35 ✦"}};
 render();
