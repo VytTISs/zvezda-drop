@@ -1,30 +1,15 @@
 require("dotenv").config();
-const express = require("express");
-const path = require("path");
-const { Telegraf, Markup } = require("telegraf");
-
-const token = process.env.BOT_TOKEN;
-const webAppUrl = process.env.WEB_APP_URL;
-const port = process.env.PORT || 3000;
-
-if (!token || !webAppUrl) {
-  console.error("Set BOT_TOKEN and WEB_APP_URL in environment variables.");
-  process.exit(1);
-}
-
-const app = express();
-app.use(express.static(path.join(__dirname, "public")));
-app.get("/health", (_req, res) => res.send("Gift Case Simulator is running."));
-app.listen(port, () => console.log(`Web app listening on ${port}`));
-
-const bot = new Telegraf(token);
-bot.start((ctx) => ctx.reply(
-  "🎁 Добро пожаловать в Gift Case Simulator! Все подарки и монеты виртуальные.",
-  Markup.inlineKeyboard([Markup.button.webApp("🎁 Открыть симулятор", webAppUrl)])
-));
-bot.command("help", (ctx) => ctx.reply("Нажми /start, чтобы открыть симулятор."));
-bot.launch();
-console.log("Gift Case Simulator bot is running.");
-
-process.once("SIGINT", () => bot.stop("SIGINT"));
-process.once("SIGTERM", () => bot.stop("SIGTERM"));
+const express=require("express"),path=require("path");
+const app=express(),PORT=process.env.PORT||3000;
+app.use(express.static(path.join(__dirname,"public")));
+app.get("/",(_,res)=>res.sendFile(path.join(__dirname,"public","index.html")));
+app.get("/health",(_,res)=>res.json({ok:true}));
+app.listen(PORT,()=>console.log("Zvezda Drop listening on "+PORT));
+if(process.env.BOT_TOKEN){
+ const {Telegraf,Markup}=require("telegraf"),bot=new Telegraf(process.env.BOT_TOKEN);
+ bot.start(ctx=>process.env.WEB_APP_URL
+  ?ctx.reply("Добро пожаловать в Zvezda Drop! Все предметы и монеты виртуальные.",Markup.inlineKeyboard([[Markup.button.webApp("🎁 Открыть игру",process.env.WEB_APP_URL)]]))
+  :ctx.reply("Бот запущен. Добавь WEB_APP_URL в Render после публикации сайта."));
+ bot.launch().catch(e=>console.error("Bot error:",e.message));
+ process.once("SIGINT",()=>bot.stop("SIGINT"));process.once("SIGTERM",()=>bot.stop("SIGTERM"));
+}else console.log("BOT_TOKEN не задан: сайт работает без Telegram-бота.");
