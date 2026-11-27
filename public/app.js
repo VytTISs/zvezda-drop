@@ -1,5 +1,17 @@
-=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
-const base={balance:500,inventory:[],opened:0,lastDaily:"",games:0};let state;try{state={...base,...JSON.parse(localStorage.zd2||"{}")}}catch{state={...base}}
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const base={balance:500,inventory:[],opened:0,lastDaily:"",games:0};
+let state;
+try {
+  let saved = {};
+  try { saved = JSON.parse(window.localStorage.getItem("zd2") || "{}"); } catch (_) { saved = {}; }
+  state = { ...base, ...(saved && typeof saved === "object" ? saved : {}) };
+  if (!Array.isArray(state.inventory)) state.inventory = [];
+  if (!Number.isFinite(Number(state.balance))) state.balance = 500;
+  state.balance = Math.max(0, Math.floor(Number(state.balance)));
+  state.opened = Math.max(0, Math.floor(Number(state.opened) || 0));
+  state.games = Math.max(0, Math.floor(Number(state.games) || 0));
+} catch (_) { state = { ...base }; }
+
 const gifts=[
 {name:"Плюшевый мишка",emoji:"🧸",rarity:"Обычный",value:45,w:38},
 {name:"Сияющее сердце",emoji:"💝",rarity:"Обычный",value:55,w:30},
@@ -16,14 +28,14 @@ const gifts=[
 {name:"Сердце галактики",emoji:"💫",rarity:"Мифический",value:3500,w:.08}
 ];
 const cases=[{id:"start",name:"Стартовый",desc:"Первый шаг в коллекцию",price:100,emoji:"🎁",tag:"ДЛЯ НОВИЧКОВ"},{id:"pro",name:"Премиум",desc:"Больше шансов на редкие подарки",price:250,emoji:"💎",tag:"ПОПУЛЯРНЫЙ"},{id:"royal",name:"Королевский",desc:"Повышенный шанс легендарных",price:500,emoji:"👑",tag:"ВЫСОКАЯ РЕДКОСТЬ"}];
-function save(){localStorage.zd2=JSON.stringify(state);render()}function lvl(){return 1+Math.floor(state.opened/5)+Math.floor(state.games/10)}
+function save(){try{window.localStorage.setItem("zd2",JSON.stringify(state))}catch(_){}render()}function lvl(){return 1+Math.floor(state.opened/5)+Math.floor(state.games/10)}
 function render(){$("#balance").textContent=state.balance.toLocaleString("ru");$("#count").textContent=state.inventory.length;$("#opened").textContent=state.opened;$("#level").textContent=lvl();$("#profileInfo").innerHTML=`<div>Баланс: <b>✦ ${state.balance}</b><br>Подарков: ${state.inventory.length}<br>Открытий: ${state.opened}<br>Уровень: ${lvl()}</div>`;
 $("#caseGrid").innerHTML=cases.map(c=>`<article class="case"><small>${c.tag}</small><div class="art">${c.emoji}</div><h3>${c.name}</h3><p>${c.desc}</p><div class="bottom">✦ ${c.price}<button data-case="${c.id}">Открыть</button></div></article>`).join("");
 $("#items").innerHTML=state.inventory.length?state.inventory.slice().reverse().map((g,j)=>`<article class="item"><div class="emoji">${g.emoji}</div><h3>${g.name}</h3><p>${g.rarity} · ✦ ${g.value}</p><button data-sell="${state.inventory.length-1-j}">Продать за ✦ ${Math.floor(g.value*.7)}</button></article>`).join(""):`<div class="empty">Инвентарь пуст. Открой первый кейс!</div>`}
 function draw(id){let pool=gifts.map(g=>({...g}));const boost=id==="pro"?{"Обычный":.65,"Редкий":1.5,"Эпический":2,"Легендарный":2.8,"Мифический":3}:id==="royal"?{"Обычный":.3,"Редкий":.9,"Эпический":2,"Легендарный":4.5,"Мифический":6}:{};pool.forEach(g=>g.w*=boost[g.rarity]||1);let n=Math.random()*pool.reduce((s,g)=>s+g.w,0);for(let g of pool){n-=g.w;if(n<=0)return g}return pool[0]}
 let pending=null;
 $("#caseGrid").onclick=e=>{let b=e.target.closest("[data-case]");if(!b)return;let c=cases.find(x=>x.id===b.dataset.case);if(state.balance<c.price)return alert("Не хватает виртуальных звёзд. Сыграй в мини-игру или забери бонус.");state.balance-=c.price;state.opened++;pending=draw(c.id);save();const reel=[...Array.from({length:24},()=>gifts[Math.floor(Math.random()*gifts.length)]),pending];$("#dropEmoji").textContent="🎁";$("#dropName").textContent="Прокрутка подарков…";$("#dropRarity").textContent="";$("#dropValue").textContent="";$("#modal").classList.remove("hidden");const box=$("#dropEmoji");box.classList.add("spinning");let i=0,delay=55;function tick(){box.textContent=reel[Math.min(i,reel.length-1)].emoji;i++;if(i<reel.length){delay+=7;setTimeout(tick,delay)}else{box.classList.remove("spinning");$("#dropName").textContent=pending.name;$("#dropRarity").textContent=pending.rarity.toUpperCase();$("#dropValue").textContent="Ценность: ✦ "+pending.value;box.classList.add("landed")}}tick()};
-function close(){if(pending){state.inventory.push(pending);pending=null;save()}$("#modal").classList.add("hidden");$("#dropEmoji").classList.remove("landed","spinning")}$("#claim").onclick=close;$("#close").onclick=()=>$("#modal").classList.add("hidden");
+function close(){if(pending){state.inventory.push(pending);pending=null;save()}$("#modal").classList.add("hidden");$("#dropEmoji").classList.remove("landed","spinning")}$("#claim").onclick=close;$("#close").onclick=close;
 $("#items").onclick=e=>{let b=e.target.closest("[data-sell]");if(!b)return;let i=+b.dataset.sell,g=state.inventory[i];state.balance+=Math.floor(g.value*.7);state.inventory.splice(i,1);save()};
 $$("nav button").forEach(b=>b.onclick=()=>{$$("nav button").forEach(x=>x.classList.toggle("active",x===b));$$(".view").forEach(x=>x.classList.toggle("active",x.id===b.dataset.tab))});$$("[data-go]").forEach(b=>b.onclick=()=>{const t=b.dataset.go;$$("nav button").forEach(x=>x.classList.toggle("active",x.dataset.tab===t));$$(".view").forEach(x=>x.classList.toggle("active",x.id===t))});
 $("#daily").onclick=()=>{let d=new Date().toLocaleDateString();if(state.lastDaily===d)return alert("Бонус уже получен сегодня.");state.lastDaily=d;state.balance+=100;save();alert("Получено 100 виртуальных звёзд!")};
@@ -51,3 +63,19 @@ $("#minesStart").onclick=()=>{
 };
 $("#planeStart").onclick=()=>{
  let height=0,mult=1,active=false,ended=false,timer=null;
+ stage(`<h3>✈️ Полёт звезды</h3><p>Выбери базовую награду, запусти самолётик и посади его, чтобы получить награду с текущим множителем.</p>${amountInput('planeBase')}<div class="sky"><div class="cloud cloud-a">☁️</div><div class="cloud cloud-b">☁️</div><div id="plane" class="plane">✈️</div><div class="flight-mult" id="flightMult">x1.00</div></div><p>Высота: <b id="flightHeight">0</b> м</p><button id="flightStart">Запустить</button> <button id="flightStop" disabled>Посадить и забрать</button><p id="flightMsg">Баланс не списывается. Награда рассчитывается от выбранной суммы.</p>`);
+ const start=$("#flightStart"),stop=$("#flightStop");
+ function finish(landed){if(ended)return;ended=true;active=false;clearInterval(timer);start.disabled=true;stop.disabled=true;const reward=landed?Math.floor(readAmount('planeBase')*mult):0;if(landed){state.balance+=reward;state.games++;save();$("#flightMsg").textContent=`Посадка! Получено +${reward} виртуальных звёзд (x${mult.toFixed(2)}).`;}else{$("#flightMsg").textContent="Полёт завершился. В этом раунде награда не начислена; баланс не изменился.";}$("#plane").classList.add("plane-landed");}
+ start.onclick=()=>{if(active||ended)return;active=true;start.disabled=true;stop.disabled=false;timer=setInterval(()=>{height+=Math.floor(4+Math.random()*7);mult=1+height/100;$("#flightHeight").textContent=height;$("#flightMult").textContent="x"+mult.toFixed(2);$("#plane").style.bottom=Math.min(72,8+height/10)+"%";if(Math.random()<.018)finish(false)},250)};
+ stop.onclick=()=>finish(true);
+};
+render();
+
+// Visible diagnostics instead of a silently broken interface.
+window.addEventListener("error", function (event) {
+  const box = document.createElement("div");
+  box.style.cssText = "position:fixed;bottom:10px;left:10px;right:10px;z-index:99999;background:#4a1d2b;color:white;padding:12px;border-radius:10px;font:12px Arial";
+  box.textContent = "Ошибка запуска игры. Обнови страницу; если ошибка повторится, сообщи: " + (event.message || "неизвестная ошибка");
+  document.body.appendChild(box);
+});
+console.info("Zvezda Drop app.js loaded: v5");
