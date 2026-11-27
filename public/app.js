@@ -1,58 +1,85 @@
 (() => {
   'use strict';
-  const $ = (id) => document.getElementById(id);
-  const STORAGE_KEY = 'zvezda_drop_v8_state';
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => [...document.querySelectorAll(s)];
+  const STORAGE = 'zvezdaDropState_v3';
+  const defaults = { balance: 500, inventory: [], opened: 0, lastDaily: '', games: 0, score: 0 };
+  let state;
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE) || 'null');
+    state = saved && typeof saved === 'object' ? { ...defaults, ...saved } : { ...defaults };
+    if (!Array.isArray(state.inventory)) state.inventory = [];
+    if (!Number.isFinite(state.balance)) state.balance = defaults.balance;
+  } catch { state = { ...defaults }; }
   const gifts = [
-    {id:'bear',name:'Golden Bear',emoji:'🧸',rarity:'Legendary',value:120,desc:'A golden collectible bear.'},
-    {id:'heart',name:'Crystal Heart',emoji:'💖',rarity:'Epic',value:75,desc:'A glowing crystal heart.'},
-    {id:'ring',name:'Royal Ring',emoji:'💍',rarity:'Legendary',value:130,desc:'A jewel fit for royalty.'},
-    {id:'flowers',name:'Star Bouquet',emoji:'💐',rarity:'Rare',value:45,desc:'A bright bouquet with a little sparkle.'},
-    {id:'cake',name:'Moon Cake',emoji:'🎂',rarity:'Rare',value:40,desc:'A sweet celebration under the stars.'},
-    {id:'rocket',name:'Cosmic Rocket',emoji:'🚀',rarity:'Epic',value:85,desc:'A rocket ready for a cosmic trip.'},
-    {id:'crown',name:'Star Crown',emoji:'👑',rarity:'Mythic',value:200,desc:'The rarest crown in the collection.'},
-    {id:'star',name:'Lucky Star',emoji:'🌟',rarity:'Common',value:20,desc:'A small star for a growing collection.'}
+    { name: 'Звёздная открытка', emoji: '🌟', rarity: 'Обычный', value: 25, weight: 42 },
+    { name: 'Лунный брелок', emoji: '🌙', rarity: 'Обычный', value: 35, weight: 30 },
+    { name: 'Космический шар', emoji: '🔮', rarity: 'Редкий', value: 65, weight: 17 },
+    { name: 'Золотая звезда', emoji: '⭐', rarity: 'Эпический', value: 120, weight: 8 },
+    { name: 'Корона галактики', emoji: '👑', rarity: 'Легендарный', value: 250, weight: 3 }
   ];
   const cases = [
-    {id:'starter',name:'Starter Case',emoji:'📦',desc:'A first step into your collection.',limit:'Free daily reward',pool:['star','flowers','cake','heart']},
-    {id:'premium',name:'Premium Case',emoji:'💎',desc:'A brighter selection of collectibles.',limit:'Unlock with 3 daily missions',pool:['flowers','cake','heart','rocket','bear']},
-    {id:'royal',name:'Royal Case',emoji:'👑',desc:'A royal set of special gifts.',limit:'Unlock at level 3',pool:['heart','rocket','ring','crown','bear']},
-    {id:'free',name:'Free Case',emoji:'🎁',desc:'A free daily surprise for every player.',limit:'Free once per day',pool:['star','flowers','cake','heart','rocket']}
+    { id: 'starter', name: 'Стартовый', emoji: '🎁', price: 100, desc: 'Первые подарки коллекционера' },
+    { id: 'premium', name: 'Премиум', emoji: '💎', price: 250, desc: 'Больше редких находок' },
+    { id: 'royal', name: 'Королевский', emoji: '👑', price: 400, desc: 'Подарки высокой редкости' }
   ];
-  const defaultState = () => ({balance:250,inventory:[],opened:0,earned:0,level:1,dailyDate:'',lastFreeDate:'',missionsDate:'',minesDone:0,planeDone:0,caseCounts:{},claimedMissions:[]});
-  function loadState(){try{const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return defaultState();const parsed=JSON.parse(raw);return {...defaultState(),...parsed,caseCounts:parsed.caseCounts||{},inventory:Array.isArray(parsed.inventory)?parsed.inventory:[],claimedMissions:Array.isArray(parsed.claimedMissions)?parsed.claimedMissions:[]};}catch(_){return defaultState();}}
-  let state=loadState();
-  function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state));renderAll();}
-  function addStars(amount,reason){if(!Number.isFinite(amount)||amount<=0)return;state.balance+=Math.floor(amount);state.earned+=Math.floor(amount);toast(`+${Math.floor(amount)} virtual stars · ${reason}`);save();}
-  function giftById(id){return gifts.find(g=>g.id===id)||gifts[gifts.length-1];}
-  function rarityClass(r){return 'rarity-'+r.toLowerCase();}
-  function toast(message){const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),2100);}
-  function navigate(page){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===`page-${page}`));document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.go===page));window.scrollTo({top:0,behavior:'smooth'});}
-  document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.go)));
-  function giftCard(g,withSell=false,index=0){return `<article class="gift-card ${rarityClass(g.rarity)}"><div class="gift-art">${g.emoji}</div><b>${g.name}</b><small>${g.rarity}</small><div class="value">✦ ${g.value} stars</div>${withSell?`<button class="sell-btn" data-sell="${index}">Sell for ${Math.floor(g.value*.7)} ✦</button>`:''}</article>`;}
-  function renderCases(){ $('case-list').innerHTML=cases.map(c=>`<article class="case-card"><div class="case-art">${c.emoji}</div><div class="case-info"><h3>${c.name}</h3><p>${c.desc}</p><div class="case-meta">${c.limit}</div><button class="case-open" data-case="${c.id}">Open case</button></div></article>`).join('');document.querySelectorAll('[data-case]').forEach(b=>b.addEventListener('click',()=>openCase(b.dataset.case))); }
-  function openCase(id){const c=cases.find(x=>x.id===id);if(!c)return;const today=new Date().toISOString().slice(0,10);if((id==='free'||id==='starter')&&state.lastFreeDate===today){toast('Your free case is already claimed today.');return;}if(id==='premium'&&state.opened<3){toast('Open 3 free cases first to unlock Premium.');return;}if(id==='royal'&&state.level<3){toast('Reach level 3 to unlock Royal.');return;}if(id==='free'||id==='starter')state.lastFreeDate=today;const pool=c.pool.map(giftById);const weights=pool.map(g=>g.rarity==='Mythic'?1:g.rarity==='Legendary'?5:g.rarity==='Epic'?14:g.rarity==='Rare'?28:52);const total=weights.reduce((a,b)=>a+b,0);let r=Math.random()*total,chosen=pool[0];for(let i=0;i<pool.length;i++){r-=weights[i];if(r<=0){chosen=pool[i];break;}}state.inventory.push(chosen.id);state.opened++;state.level=1+Math.floor(state.opened/5);save();showGift(chosen);}
-  function showGift(g){$('modal-gift').textContent='🎁';$('modal-name').textContent='Opening...';$('modal-rarity').textContent='';$('modal-desc').textContent='Your gift is being revealed';$('gift-modal').classList.remove('hidden');let frames=0;const timer=setInterval(()=>{const random=gifts[Math.floor(Math.random()*gifts.length)];$('modal-gift').textContent=random.emoji;frames++;if(frames>=17){clearInterval(timer);$('modal-gift').textContent=g.emoji;$('modal-name').textContent=g.name;$('modal-rarity').textContent=g.rarity.toUpperCase();$('modal-desc').textContent=g.desc;}},95);}
-  $('modal-close').addEventListener('click',()=>$('gift-modal').classList.add('hidden'));$('modal-ok').addEventListener('click',()=>$('gift-modal').classList.add('hidden'));$('gift-modal').addEventListener('click',e=>{if(e.target===$('gift-modal'))$('gift-modal').classList.add('hidden');});
-  function renderInventory(){ $('inventory-count').textContent=state.inventory.length;$('inventory-grid').innerHTML=state.inventory.length?state.inventory.map((id,i)=>giftCard(giftById(id),true,i)).join(''):'<div class="empty-state">Your collection is empty.<br>Open a free case to get your first gift.</div>';document.querySelectorAll('[data-sell]').forEach(b=>b.addEventListener('click',()=>{const i=Number(b.dataset.sell);if(!Number.isInteger(i)||i<0||i>=state.inventory.length)return;const [id]=state.inventory.splice(i,1);const g=giftById(id);addStars(Math.floor(g.value*.7),`${g.name} sold`);}));}
-  $('daily-btn').addEventListener('click',()=>{const today=new Date().toISOString().slice(0,10);if(state.dailyDate===today){toast('Daily reward already claimed.');return;}state.dailyDate=today;addStars(50,'daily reward');});
-  function renderProfile(){ $('player-level').textContent=state.level;$('profile-opened').textContent=state.opened;$('profile-items').textContent=state.inventory.length;$('profile-earned').textContent=state.earned;$('leader-stars').textContent=`${state.balance} ✦`;const tasks=[{id:'open',label:'Open 1 case',done:state.opened>0,reward:20},{id:'collect',label:'Collect 2 gifts',done:state.inventory.length>=2,reward:25},{id:'mines',label:'Finish Star Finder',done:state.minesDone>0,reward:20},{id:'plane',label:'Complete a flight stage',done:state.planeDone>0,reward:20}];$('missions').innerHTML=tasks.map(t=>`<div class="mission"><span>${t.done?'✓':'◇'}</span><b>${t.label}</b><small>${t.reward} ✦</small><button class="sell-btn" data-mission="${t.id}" ${!t.done||state.claimedMissions.includes(t.id)?'disabled':''}>${state.claimedMissions.includes(t.id)?'Claimed':'Claim'}</button></div>`).join('');document.querySelectorAll('[data-mission]').forEach(b=>b.addEventListener('click',()=>{const id=b.dataset.mission;if(state.claimedMissions.includes(id))return;state.claimedMissions.push(id);const t=tasks.find(x=>x.id===id);addStars(t.reward,'mission reward');}));}
-  function renderAll(){ $('balance').textContent=state.balance;$('featured-gifts').innerHTML=gifts.slice(0,4).map(g=>giftCard(g)).join('');renderCases();renderInventory();renderProfile();}
-  // Saper: free skill puzzle. Rewards are fixed and capped; no balance is risked.
-  let mines={active:false,found:0,opened:new Set(),safe:new Set()};
-  function drawMines(){const board=$('mines-board');board.innerHTML='';for(let i=0;i<25;i++){const btn=document.createElement('button');btn.className='tile';btn.type='button';btn.textContent=mines.opened.has(i)?'✦':'';btn.disabled=!mines.active||mines.opened.has(i);btn.addEventListener('click',()=>revealMine(i));board.appendChild(btn);}}
-  function startMines(){mines={active:true,found:0,opened:new Set(),safe:new Set()};while(mines.safe.size<5)mines.safe.add(Math.floor(Math.random()*25));$('safe-count').textContent='0/5';$('mines-reward').textContent='0 ✦';$('mines-message').textContent='Find the five hidden stars.';$('mines-start').disabled=true;$('mines-collect').disabled=false;drawMines();}
-  function revealMine(i){if(!mines.active||mines.opened.has(i))return;mines.opened.add(i);const safe=mines.safe.has(i);const tile=$('mines-board').children[i];if(safe){mines.found++;tile.textContent='✦';tile.classList.add('open');$('safe-count').textContent=`${mines.found}/5`;$('mines-reward').textContent=`${mines.found*6} ✦`;$('mines-message').textContent='Nice find. Keep going or finish the round.';}else{tile.textContent='·';tile.style.background='#554052';$('mines-message').textContent='Empty tile. Your collected progress is safe.';}tile.disabled=true;if(mines.found===5){finishMines();}}
-  function finishMines(){if(!mines.active)return;mines.active=false;const reward=mines.found*6;if(reward>0)addStars(reward,'Star Finder reward');else toast('No stars found this round.');state.minesDone++;$('mines-message').textContent=`Round complete. You earned ${reward} stars.`;$('mines-start').disabled=false;$('mines-collect').disabled=true;drawMines();save();}
-  $('mines-start').addEventListener('click',startMines);$('mines-collect').addEventListener('click',finishMines);
-  // Plane: a timed tapping skill challenge with a fixed maximum reward and no stake.
-  let flight={active:false,stage:0,timer:null};
-  function startFlight(){if(flight.timer)clearTimeout(flight.timer);flight={active:true,stage:0,timer:null};$('plane-start').disabled=true;$('plane-tap').disabled=false;$('plane-count').textContent='0/5';$('plane-reward').textContent='0 ✦';$('plane-message').textContent='Tap the checkpoint before the short timer ends.';$('sky-level').textContent='TAKEOFF';$('plane-emoji').style.left='14%';$('plane-emoji').style.bottom='25px';armFlightTimer();}
-  function armFlightTimer(){if(flight.timer)clearTimeout(flight.timer);flight.timer=setTimeout(()=>{if(flight.active){flight.active=false;$('plane-start').disabled=false;$('plane-tap').disabled=true;$('plane-message').textContent=`Flight ended at stage ${flight.stage}. No reward this time — try again.`;}},5000);}
-  function tapFlight(){if(!flight.active)return;clearTimeout(flight.timer);flight.stage++;$('plane-count').textContent=`${flight.stage}/5`;$('plane-reward').textContent=`${flight.stage*8} ✦`;$('plane-emoji').style.left=`${14+flight.stage*13}%`;$('plane-emoji').style.bottom=`${25+flight.stage*25}px`;$('sky-level').textContent=`ALTITUDE ${flight.stage*20}%`;$('plane-message').textContent=`Checkpoint ${flight.stage} reached.`;if(flight.stage>=5){flight.active=false;$('plane-start').disabled=false;$('plane-tap').disabled=true;state.planeDone++;addStars(40,'Sky Flight completed');$('plane-message').textContent='Perfect flight! You earned 40 stars.';save();}else armFlightTimer();}
-  $('plane-start').addEventListener('click',startFlight);$('plane-tap').addEventListener('click',tapFlight);
-  document.querySelectorAll('.game-tab').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.game-tab').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.game-panel').forEach(x=>x.classList.toggle('active',x.id===`game-${b.dataset.game}`));}));
-  // Daily reset for mission claims.
-  const today=new Date().toISOString().slice(0,10);if(state.missionsDate!==today){state.missionsDate=today;state.claimedMissions=[];}
-  const tg=window.Telegram&&window.Telegram.WebApp;if(tg){try{tg.ready();tg.expand();}catch(_){}}
-  renderAll();drawMines();
-})();
+  let pendingGift = null;
+  let timer = null;
+  let gameCleanups = [];
+  const save = () => { try { localStorage.setItem(STORAGE, JSON.stringify(state)); } catch {} };
+  const rarityClass = (r) => ({ 'Обычный':'common', 'Редкий':'rare', 'Эпический':'epic', 'Легендарный':'legendary' }[r] || 'common');
+  function update() {
+    $('#balance').textContent = Math.floor(state.balance);
+    $('#count').textContent = state.inventory.length;
+    $('#opened').textContent = state.opened;
+    $('#level').textContent = Math.max(1, Math.floor(state.score / 250) + 1);
+    $('#profileInfo').innerHTML = `<p>Баланс: <b>${Math.floor(state.balance)} ✦</b></p><p>Открыто кейсов: <b>${state.opened}</b></p><p>Сыграно мини-игр: <b>${state.games}</b></p><p>Очки: <b>${state.score}</b></p>`;
+    renderCases(); renderInventory(); save();
+  }
+  function renderCases() {
+    $('#caseGrid').innerHTML = cases.map(c => `<article class="caseCard"><div class="caseArt">${c.emoji}</div><div><b>${c.name}</b><p>${c.desc}</p><small>Цена: ${c.price} ✦</small><button class="openCase" data-case="${c.id}">Открыть</button></div></article>`).join('');
+  }
+  function renderInventory() {
+    const root = $('#items');
+    if (!state.inventory.length) { root.innerHTML = '<div class="empty">Пока пусто. Открой первый кейс.</div>'; return; }
+    root.innerHTML = state.inventory.map((g, i) => `<article class="giftItem"><div class="giftEmoji">${g.emoji}</div><b>${g.name}</b><small>${g.rarity}</small><p>Ценность: ${g.value} ✦</p><button class="sellGift" data-index="${i}">Обменять за ${g.value} ✦</button></article>`).join('');
+  }
+  function drawGift(caseId) {
+    const bonus = caseId === 'royal' ? 1.7 : caseId === 'premium' ? 1.25 : 1;
+    const pool = gifts.map(g => ({ ...g, weight: g.weight / (g.value > 100 ? bonus : 1) }));
+    const total = pool.reduce((a,g) => a + g.weight, 0); let n = Math.random() * total;
+    for (const g of pool) { n -= g.weight; if (n <= 0) return g; }
+    return pool[0];
+  }
+  function openCase(id) {
+    const c = cases.find(x => x.id === id); if (!c) return;
+    if (state.balance < c.price) { alert('Не хватает виртуальных звёзд. Забери ежедневный бонус или обменяй подарок.'); return; }
+    state.balance -= c.price; state.opened++; pendingGift = drawGift(id); update();
+    $('#dropEmoji').textContent = pendingGift.emoji;
+    $('#dropName').textContent = pendingGift.name;
+    $('#dropRarity').textContent = pendingGift.rarity;
+    $('#dropValue').textContent = `Ценность: ${pendingGift.value} ✦`;
+    $('#modal').classList.remove('hidden');
+  }
+  function closeModal() { $('#modal').classList.add('hidden'); }
+  $('#caseGrid').addEventListener('click', e => { const b = e.target.closest('[data-case]'); if (b) openCase(b.dataset.case); });
+  $('#items').addEventListener('click', e => { const b = e.target.closest('[data-index]'); if (!b) return; const i = Number(b.dataset.index); const [g] = state.inventory.splice(i,1); if (g) { state.balance += g.value; update(); } });
+  $('#claim').addEventListener('click', () => { if (pendingGift) state.inventory.unshift({ ...pendingGift, uid: Date.now() + Math.random() }); pendingGift = null; closeModal(); update(); });
+  $('#close').addEventListener('click', closeModal);
+  $('#modal').addEventListener('click', e => { if (e.target === $('#modal')) closeModal(); });
+  function showTab(tab) {
+    $$('.view').forEach(v => v.classList.toggle('active', v.id === tab));
+    $$('[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    stopGames();
+  }
+  $$('[data-tab]').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+  $$('[data-go]').forEach(b => b.addEventListener('click', () => showTab(b.dataset.go)));
+  $('#daily').addEventListener('click', () => {
+    const today = new Date().toISOString().slice(0,10);
+    if (state.lastDaily === today) { alert('Ежедневный бонус уже получен.'); return; }
+    state.lastDaily = today; state.balance += 100; update(); alert('Получено +100 виртуальных звёзд!');
+  });
+  function stopGames() { gameCleanups.forEach(fn => { try { fn(); } catch {} }); gameCleanups = []; if (timer) { clearTimeout(timer); timer = null; } }
+  function stage(html) { stopGames(); const s = $('#stage'); s.classList.remove('hidden'); s.innerHTML = html; s.scrollIntoView({ behavior:'smooth', block:'nearest' }); }
+  function reward(points, message) { state.games++; state.score += points; state.balance += points; update(); const m = $('#gameMessage'); if (m) m.textContent = `${message} +${points} ✦`; }
+  $('#tapStart').addEventListener('click', () => {
