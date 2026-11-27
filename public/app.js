@@ -1,58 +1,58 @@
-const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
-const base={balance:500,inventory:[],opened:0,lastDaily:"",lastFree:"",games:0};
-let state;
-try {
-  let saved = {};
-  try { saved = JSON.parse(window.localStorage.getItem("zd2") || "{}"); } catch (_) { saved = {}; }
-  state = { ...base, ...(saved && typeof saved === "object" ? saved : {}) };
-  if (!Array.isArray(state.inventory)) state.inventory = [];
-  if (!Number.isFinite(Number(state.balance))) state.balance = 500;
-  state.balance = Math.max(0, Math.floor(Number(state.balance)));
-  state.opened = Math.max(0, Math.floor(Number(state.opened) || 0));
-  state.games = Math.max(0, Math.floor(Number(state.games) || 0));
-} catch (_) { state = { ...base }; }
-
-const gifts=[
-{name:"Плюшевый мишка",emoji:"🧸",rarity:"Обычный",value:45,w:38},
-{name:"Сияющее сердце",emoji:"💝",rarity:"Обычный",value:55,w:30},
-{name:"Букет цветов",emoji:"💐",rarity:"Редкий",value:95,w:15},
-{name:"Золотое кольцо",emoji:"💍",rarity:"Редкий",value:150,w:9},
-{name:"Счастливая звезда",emoji:"🌠",rarity:"Редкий",value:180,w:7},
-{name:"Праздничный торт",emoji:"🎂",rarity:"Эпический",value:280,w:4},
-{name:"Алмазный кубок",emoji:"🏆",rarity:"Эпический",value:360,w:3},
-{name:"Лунный кот",emoji:"🐈‍⬛",rarity:"Эпический",value:420,w:2.5},
-{name:"Космическая ракета",emoji:"🚀",rarity:"Легендарный",value:650,w:1.3},
-{name:"Звёздная корона",emoji:"👑",rarity:"Легендарный",value:900,w:.8},
-{name:"Золотой дракон",emoji:"🐉",rarity:"Легендарный",value:1300,w:.45},
-{name:"Галактический феникс",emoji:"🦅",rarity:"Мифический",value:2200,w:.18},
-{name:"Сердце галактики",emoji:"💫",rarity:"Мифический",value:3500,w:.08}
-];
-const cases=[{id:"start",name:"Стартовый",desc:"Первый шаг в коллекцию",price:100,emoji:"🎁",tag:"ДЛЯ НОВИЧКОВ"},{id:"pro",name:"Премиум",desc:"Больше шансов на редкие подарки",price:250,emoji:"💎",tag:"ПОПУЛЯРНЫЙ"},{id:"royal",name:"Королевский",desc:"Повышенный шанс легендарных",price:500,emoji:"👑",tag:"ВЫСОКАЯ РЕДКОСТЬ"},{id:"free",name:"Бесплатный",desc:"Один подарок бесплатно каждый день — его можно продать за виртуальные звёзды",price:0,emoji:"🌟",tag:"БЕСПЛАТНО · 1 РАЗ В ДЕНЬ"}];
-function save(){try{window.localStorage.setItem("zd2",JSON.stringify(state))}catch(_){}render()}function lvl(){return 1+Math.floor(state.opened/5)+Math.floor(state.games/10)}
-function render(){$("#balance").textContent=state.balance.toLocaleString("ru");$("#count").textContent=state.inventory.length;$("#opened").textContent=state.opened;$("#level").textContent=lvl();$("#profileInfo").innerHTML=`<div>Баланс: <b>✦ ${state.balance}</b><br>Подарков: ${state.inventory.length}<br>Открытий: ${state.opened}<br>Уровень: ${lvl()}</div>`;
-$("#caseGrid").innerHTML=cases.map(c=>{const used=c.id==="free"&&state.lastFree===new Date().toLocaleDateString();return `<article class="case ${c.id==='free'?'free-case':''}"><small>${c.tag}</small><div class="art">${c.emoji}</div><h3>${c.name}</h3><p>${c.desc}</p><div class="bottom">${c.price?`✦ ${c.price}`:"✦ 0"}<button data-case="${c.id}" ${used?"disabled":""}>${used?"Уже получен":"Открыть"}</button></div></article>`}).join("");
-$("#items").innerHTML=state.inventory.length?state.inventory.slice().reverse().map((g,j)=>`<article class="item"><div class="emoji">${g.emoji}</div><h3>${g.name}</h3><p>${g.rarity} · ✦ ${g.value}</p><button data-sell="${state.inventory.length-1-j}">Продать за ✦ ${Math.floor(g.value*.7)}</button></article>`).join(""):`<div class="empty">Инвентарь пуст. Открой первый кейс!</div>`}
-function draw(id){let pool=gifts.map(g=>({...g}));const boost=id==="free"?{"Обычный":.8,"Редкий":1.35,"Эпический":1.55,"Легендарный":1.8,"Мифический":2}:id==="start"?{"Обычный":.9,"Редкий":1.15,"Эпический":1.3,"Легендарный":1.5,"Мифический":1.6}:id==="pro"?{"Обычный":.6,"Редкий":1.6,"Эпический":2.2,"Легендарный":3.2,"Мифический":3.8}:id==="royal"?{"Обычный":.25,"Редкий":.9,"Эпический":2.2,"Легендарный":5,"Мифический":7}:{};pool.forEach(g=>g.w*=boost[g.rarity]||1);let n=Math.random()*pool.reduce((s,g)=>s+g.w,0);for(let g of pool){n-=g.w;if(n<=0)return g}return pool[0]}
-let pending=null;
-$("#caseGrid").onclick=e=>{let b=e.target.closest("[data-case]");if(!b)return;let c=cases.find(x=>x.id===b.dataset.case);if(!c)return;if(c.id==="free"){const today=new Date().toLocaleDateString();if(state.lastFree===today)return alert("Бесплатный кейс уже получен сегодня.");state.lastFree=today;}else if(state.balance<c.price){return alert("Не хватает виртуальных звёзд. Забери ежедневный бонус или продай подарок.");}else{state.balance-=c.price;}state.opened++;pending=draw(c.id);save();const reel=[...Array.from({length:24},()=>gifts[Math.floor(Math.random()*gifts.length)]),pending];$("#dropEmoji").textContent="🎁";$("#dropName").textContent="Прокрутка подарков…";$("#dropRarity").textContent="";$("#dropValue").textContent="";$("#modal").classList.remove("hidden");const box=$("#dropEmoji");box.classList.add("spinning");let i=0,delay=55;function tick(){box.textContent=reel[Math.min(i,reel.length-1)].emoji;i++;if(i<reel.length){delay+=7;setTimeout(tick,delay)}else{box.classList.remove("spinning");$("#dropName").textContent=pending.name;$("#dropRarity").textContent=pending.rarity.toUpperCase();$("#dropValue").textContent="Ценность: ✦ "+pending.value;box.classList.add("landed")}}tick()};
-function close(){if(pending){state.inventory.push(pending);pending=null;save()}$("#modal").classList.add("hidden");$("#dropEmoji").classList.remove("landed","spinning")}$("#claim").onclick=close;$("#close").onclick=close;
-$("#items").onclick=e=>{let b=e.target.closest("[data-sell]");if(!b)return;let i=+b.dataset.sell,g=state.inventory[i];state.balance+=Math.floor(g.value*.7);state.inventory.splice(i,1);save()};
-$$("nav button").forEach(b=>b.onclick=()=>{$$("nav button").forEach(x=>x.classList.toggle("active",x===b));$$(".view").forEach(x=>x.classList.toggle("active",x.id===b.dataset.tab))});$$("[data-go]").forEach(b=>b.onclick=()=>{const t=b.dataset.go;$$("nav button").forEach(x=>x.classList.toggle("active",x.dataset.tab===t));$$(".view").forEach(x=>x.classList.toggle("active",x.id===t))});
-$("#daily").onclick=()=>{let d=new Date().toLocaleDateString();if(state.lastDaily===d)return alert("Бонус уже получен сегодня.");state.lastDaily=d;state.balance+=100;save();alert("Получено 100 виртуальных звёзд!")};
-function stage(html){$("#stage").innerHTML=html;$("#stage").classList.remove("hidden");$("#stage").scrollIntoView({behavior:"smooth",block:"center"})}
-$("#tapStart").onclick=()=>{let n=0,t=15;stage(`<h3>Звёздный тап</h3><p>Осталось <b id="tt">15</b> сек.</p><button class="tap" id="tap">✦</button><p>Нажатий: <b id="tn">0</b></p>`);let timer=setInterval(()=>{$("#tt").textContent=--t;if(t<=0){clearInterval(timer);let r=Math.min(100,n*2);state.balance+=r;state.games++;save();$("#stage").insertAdjacentHTML("beforeend",`<p>Раунд окончен: +${r} ✦</p>`)}},1000);$("#tap").onclick=()=>{$("#tn").textContent=++n}}
-$("#memoryStart").onclick=()=>{let sy=["🍀","🎁","⭐","💎","🌙","🧸","🎈","💜"],deck=[...sy,...sy].sort(()=>Math.random()-.5),first=null,lock=false,matched=0,tries=0;stage(`<h3>Найди пары</h3><div class="board">${deck.map((_,i)=>`<button class="cell" data-i="${i}">?</button>`).join("")}</div><p>Попытки: <b id="tries">0</b></p>`);$$(".cell").forEach(b=>b.onclick=()=>{if(lock||b.disabled||b.textContent!=="?")return;let i=+b.dataset.i;b.textContent=deck[i];if(!first){first=b;return}tries++;$("#tries").textContent=tries;if(first.textContent===b.textContent){first.disabled=b.disabled=true;first=null;if(++matched===8){let r=Math.max(20,100-tries*3);state.balance+=r;state.games++;save();$("#stage").insertAdjacentHTML("beforeend",`<p>Победа! +${r} ✦</p>`)}}else{lock=true;let old=first;first=null;setTimeout(()=>{old.textContent="?";b.textContent="?";lock=false},650)}})};
-$("#reactionStart").onclick=()=>{stage(`<h3>Проверка реакции</h3><p>Нажми, когда поле станет зелёным.</p><button class="reaction" id="react">ЖДИ СИГНАЛА…</button>`);let ready=false,done=false,tm=setTimeout(()=>{ready=true;$("#react").classList.add("ready");$("#react").textContent="ЖМИ СЕЙЧАС!"},1200+Math.random()*3500);$("#react").onclick=()=>{if(done)return;done=true;clearTimeout(tm);if(!ready){$("#react").textContent="Слишком рано. Запусти ещё раз.";return}state.balance+=35;state.games++;save();$("#react").textContent="Отлично! +35 ✦"}};
-// Mini-games use a virtual entry amount from the player's balance.
-// The entry amount is reserved once and returned once; skill bonuses are capped.
-function amountInput(id,label='Сумма из баланса'){
- const max=Math.max(0,Math.min(10000,state.balance));
- return `<label class="amount-label">${label} <input id="${id}" type="number" min="10" max="${max}" step="10" value="${Math.min(100,max)}"></label><p class="hint">Сумма спишется при старте и вернётся после раунда вместе с бонусом за результат. Баланс: ✦ ${state.balance}</p>`;
-}
-function readAmount(id){
- const el=$("#"+id); if(!el)return 0;
- const n=Math.floor(Number(el.value));
- if(!Number.isFinite(n))return 0;
- return Math.max(10,Math.min(10000,state.balance,n));
-}
-function reserveEntry(id){
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const STORAGE_KEY = 'zvezda_drop_v8_state';
+  const gifts = [
+    {id:'bear',name:'Golden Bear',emoji:'🧸',rarity:'Legendary',value:120,desc:'A golden collectible bear.'},
+    {id:'heart',name:'Crystal Heart',emoji:'💖',rarity:'Epic',value:75,desc:'A glowing crystal heart.'},
+    {id:'ring',name:'Royal Ring',emoji:'💍',rarity:'Legendary',value:130,desc:'A jewel fit for royalty.'},
+    {id:'flowers',name:'Star Bouquet',emoji:'💐',rarity:'Rare',value:45,desc:'A bright bouquet with a little sparkle.'},
+    {id:'cake',name:'Moon Cake',emoji:'🎂',rarity:'Rare',value:40,desc:'A sweet celebration under the stars.'},
+    {id:'rocket',name:'Cosmic Rocket',emoji:'🚀',rarity:'Epic',value:85,desc:'A rocket ready for a cosmic trip.'},
+    {id:'crown',name:'Star Crown',emoji:'👑',rarity:'Mythic',value:200,desc:'The rarest crown in the collection.'},
+    {id:'star',name:'Lucky Star',emoji:'🌟',rarity:'Common',value:20,desc:'A small star for a growing collection.'}
+  ];
+  const cases = [
+    {id:'starter',name:'Starter Case',emoji:'📦',desc:'A first step into your collection.',limit:'Free daily reward',pool:['star','flowers','cake','heart']},
+    {id:'premium',name:'Premium Case',emoji:'💎',desc:'A brighter selection of collectibles.',limit:'Unlock with 3 daily missions',pool:['flowers','cake','heart','rocket','bear']},
+    {id:'royal',name:'Royal Case',emoji:'👑',desc:'A royal set of special gifts.',limit:'Unlock at level 3',pool:['heart','rocket','ring','crown','bear']},
+    {id:'free',name:'Free Case',emoji:'🎁',desc:'A free daily surprise for every player.',limit:'Free once per day',pool:['star','flowers','cake','heart','rocket']}
+  ];
+  const defaultState = () => ({balance:250,inventory:[],opened:0,earned:0,level:1,dailyDate:'',lastFreeDate:'',missionsDate:'',minesDone:0,planeDone:0,caseCounts:{},claimedMissions:[]});
+  function loadState(){try{const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return defaultState();const parsed=JSON.parse(raw);return {...defaultState(),...parsed,caseCounts:parsed.caseCounts||{},inventory:Array.isArray(parsed.inventory)?parsed.inventory:[],claimedMissions:Array.isArray(parsed.claimedMissions)?parsed.claimedMissions:[]};}catch(_){return defaultState();}}
+  let state=loadState();
+  function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state));renderAll();}
+  function addStars(amount,reason){if(!Number.isFinite(amount)||amount<=0)return;state.balance+=Math.floor(amount);state.earned+=Math.floor(amount);toast(`+${Math.floor(amount)} virtual stars · ${reason}`);save();}
+  function giftById(id){return gifts.find(g=>g.id===id)||gifts[gifts.length-1];}
+  function rarityClass(r){return 'rarity-'+r.toLowerCase();}
+  function toast(message){const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),2100);}
+  function navigate(page){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===`page-${page}`));document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.go===page));window.scrollTo({top:0,behavior:'smooth'});}
+  document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.go)));
+  function giftCard(g,withSell=false,index=0){return `<article class="gift-card ${rarityClass(g.rarity)}"><div class="gift-art">${g.emoji}</div><b>${g.name}</b><small>${g.rarity}</small><div class="value">✦ ${g.value} stars</div>${withSell?`<button class="sell-btn" data-sell="${index}">Sell for ${Math.floor(g.value*.7)} ✦</button>`:''}</article>`;}
+  function renderCases(){ $('case-list').innerHTML=cases.map(c=>`<article class="case-card"><div class="case-art">${c.emoji}</div><div class="case-info"><h3>${c.name}</h3><p>${c.desc}</p><div class="case-meta">${c.limit}</div><button class="case-open" data-case="${c.id}">Open case</button></div></article>`).join('');document.querySelectorAll('[data-case]').forEach(b=>b.addEventListener('click',()=>openCase(b.dataset.case))); }
+  function openCase(id){const c=cases.find(x=>x.id===id);if(!c)return;const today=new Date().toISOString().slice(0,10);if((id==='free'||id==='starter')&&state.lastFreeDate===today){toast('Your free case is already claimed today.');return;}if(id==='premium'&&state.opened<3){toast('Open 3 free cases first to unlock Premium.');return;}if(id==='royal'&&state.level<3){toast('Reach level 3 to unlock Royal.');return;}if(id==='free'||id==='starter')state.lastFreeDate=today;const pool=c.pool.map(giftById);const weights=pool.map(g=>g.rarity==='Mythic'?1:g.rarity==='Legendary'?5:g.rarity==='Epic'?14:g.rarity==='Rare'?28:52);const total=weights.reduce((a,b)=>a+b,0);let r=Math.random()*total,chosen=pool[0];for(let i=0;i<pool.length;i++){r-=weights[i];if(r<=0){chosen=pool[i];break;}}state.inventory.push(chosen.id);state.opened++;state.level=1+Math.floor(state.opened/5);save();showGift(chosen);}
+  function showGift(g){$('modal-gift').textContent='🎁';$('modal-name').textContent='Opening...';$('modal-rarity').textContent='';$('modal-desc').textContent='Your gift is being revealed';$('gift-modal').classList.remove('hidden');let frames=0;const timer=setInterval(()=>{const random=gifts[Math.floor(Math.random()*gifts.length)];$('modal-gift').textContent=random.emoji;frames++;if(frames>=17){clearInterval(timer);$('modal-gift').textContent=g.emoji;$('modal-name').textContent=g.name;$('modal-rarity').textContent=g.rarity.toUpperCase();$('modal-desc').textContent=g.desc;}},95);}
+  $('modal-close').addEventListener('click',()=>$('gift-modal').classList.add('hidden'));$('modal-ok').addEventListener('click',()=>$('gift-modal').classList.add('hidden'));$('gift-modal').addEventListener('click',e=>{if(e.target===$('gift-modal'))$('gift-modal').classList.add('hidden');});
+  function renderInventory(){ $('inventory-count').textContent=state.inventory.length;$('inventory-grid').innerHTML=state.inventory.length?state.inventory.map((id,i)=>giftCard(giftById(id),true,i)).join(''):'<div class="empty-state">Your collection is empty.<br>Open a free case to get your first gift.</div>';document.querySelectorAll('[data-sell]').forEach(b=>b.addEventListener('click',()=>{const i=Number(b.dataset.sell);if(!Number.isInteger(i)||i<0||i>=state.inventory.length)return;const [id]=state.inventory.splice(i,1);const g=giftById(id);addStars(Math.floor(g.value*.7),`${g.name} sold`);}));}
+  $('daily-btn').addEventListener('click',()=>{const today=new Date().toISOString().slice(0,10);if(state.dailyDate===today){toast('Daily reward already claimed.');return;}state.dailyDate=today;addStars(50,'daily reward');});
+  function renderProfile(){ $('player-level').textContent=state.level;$('profile-opened').textContent=state.opened;$('profile-items').textContent=state.inventory.length;$('profile-earned').textContent=state.earned;$('leader-stars').textContent=`${state.balance} ✦`;const tasks=[{id:'open',label:'Open 1 case',done:state.opened>0,reward:20},{id:'collect',label:'Collect 2 gifts',done:state.inventory.length>=2,reward:25},{id:'mines',label:'Finish Star Finder',done:state.minesDone>0,reward:20},{id:'plane',label:'Complete a flight stage',done:state.planeDone>0,reward:20}];$('missions').innerHTML=tasks.map(t=>`<div class="mission"><span>${t.done?'✓':'◇'}</span><b>${t.label}</b><small>${t.reward} ✦</small><button class="sell-btn" data-mission="${t.id}" ${!t.done||state.claimedMissions.includes(t.id)?'disabled':''}>${state.claimedMissions.includes(t.id)?'Claimed':'Claim'}</button></div>`).join('');document.querySelectorAll('[data-mission]').forEach(b=>b.addEventListener('click',()=>{const id=b.dataset.mission;if(state.claimedMissions.includes(id))return;state.claimedMissions.push(id);const t=tasks.find(x=>x.id===id);addStars(t.reward,'mission reward');}));}
+  function renderAll(){ $('balance').textContent=state.balance;$('featured-gifts').innerHTML=gifts.slice(0,4).map(g=>giftCard(g)).join('');renderCases();renderInventory();renderProfile();}
+  // Saper: free skill puzzle. Rewards are fixed and capped; no balance is risked.
+  let mines={active:false,found:0,opened:new Set(),safe:new Set()};
+  function drawMines(){const board=$('mines-board');board.innerHTML='';for(let i=0;i<25;i++){const btn=document.createElement('button');btn.className='tile';btn.type='button';btn.textContent=mines.opened.has(i)?'✦':'';btn.disabled=!mines.active||mines.opened.has(i);btn.addEventListener('click',()=>revealMine(i));board.appendChild(btn);}}
+  function startMines(){mines={active:true,found:0,opened:new Set(),safe:new Set()};while(mines.safe.size<5)mines.safe.add(Math.floor(Math.random()*25));$('safe-count').textContent='0/5';$('mines-reward').textContent='0 ✦';$('mines-message').textContent='Find the five hidden stars.';$('mines-start').disabled=true;$('mines-collect').disabled=false;drawMines();}
+  function revealMine(i){if(!mines.active||mines.opened.has(i))return;mines.opened.add(i);const safe=mines.safe.has(i);const tile=$('mines-board').children[i];if(safe){mines.found++;tile.textContent='✦';tile.classList.add('open');$('safe-count').textContent=`${mines.found}/5`;$('mines-reward').textContent=`${mines.found*6} ✦`;$('mines-message').textContent='Nice find. Keep going or finish the round.';}else{tile.textContent='·';tile.style.background='#554052';$('mines-message').textContent='Empty tile. Your collected progress is safe.';}tile.disabled=true;if(mines.found===5){finishMines();}}
+  function finishMines(){if(!mines.active)return;mines.active=false;const reward=mines.found*6;if(reward>0)addStars(reward,'Star Finder reward');else toast('No stars found this round.');state.minesDone++;$('mines-message').textContent=`Round complete. You earned ${reward} stars.`;$('mines-start').disabled=false;$('mines-collect').disabled=true;drawMines();save();}
+  $('mines-start').addEventListener('click',startMines);$('mines-collect').addEventListener('click',finishMines);
+  // Plane: a timed tapping skill challenge with a fixed maximum reward and no stake.
+  let flight={active:false,stage:0,timer:null};
+  function startFlight(){if(flight.timer)clearTimeout(flight.timer);flight={active:true,stage:0,timer:null};$('plane-start').disabled=true;$('plane-tap').disabled=false;$('plane-count').textContent='0/5';$('plane-reward').textContent='0 ✦';$('plane-message').textContent='Tap the checkpoint before the short timer ends.';$('sky-level').textContent='TAKEOFF';$('plane-emoji').style.left='14%';$('plane-emoji').style.bottom='25px';armFlightTimer();}
+  function armFlightTimer(){if(flight.timer)clearTimeout(flight.timer);flight.timer=setTimeout(()=>{if(flight.active){flight.active=false;$('plane-start').disabled=false;$('plane-tap').disabled=true;$('plane-message').textContent=`Flight ended at stage ${flight.stage}. No reward this time — try again.`;}},5000);}
+  function tapFlight(){if(!flight.active)return;clearTimeout(flight.timer);flight.stage++;$('plane-count').textContent=`${flight.stage}/5`;$('plane-reward').textContent=`${flight.stage*8} ✦`;$('plane-emoji').style.left=`${14+flight.stage*13}%`;$('plane-emoji').style.bottom=`${25+flight.stage*25}px`;$('sky-level').textContent=`ALTITUDE ${flight.stage*20}%`;$('plane-message').textContent=`Checkpoint ${flight.stage} reached.`;if(flight.stage>=5){flight.active=false;$('plane-start').disabled=false;$('plane-tap').disabled=true;state.planeDone++;addStars(40,'Sky Flight completed');$('plane-message').textContent='Perfect flight! You earned 40 stars.';save();}else armFlightTimer();}
+  $('plane-start').addEventListener('click',startFlight);$('plane-tap').addEventListener('click',tapFlight);
+  document.querySelectorAll('.game-tab').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.game-tab').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.game-panel').forEach(x=>x.classList.toggle('active',x.id===`game-${b.dataset.game}`));}));
+  // Daily reset for mission claims.
+  const today=new Date().toISOString().slice(0,10);if(state.missionsDate!==today){state.missionsDate=today;state.claimedMissions=[];}
+  const tg=window.Telegram&&window.Telegram.WebApp;if(tg){try{tg.ready();tg.expand();}catch(_){}}
+  renderAll();drawMines();
+})();
