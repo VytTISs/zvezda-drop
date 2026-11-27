@@ -7,3 +7,7 @@
 
 /* Brand and mini-game amount controls */
 .logo{font-size:23px;display:flex;align-items:center;gap:8px;text-shadow:0 0 22px #9278ff66}.logo>span{font-size:15px;letter-spacing:2.5px}.logo small{font-size:8px;margin-top:3px}.amount-label{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin:14px auto 5px;color:#f0eaff;font-size:13px;font-weight:800}.amount-label input{width:125px;padding:11px 12px;border-radius:10px;border:1px solid #6555a1;background:#0e1427;color:#fff;font:700 16px Manrope,Arial;text-align:center;outline:none}.amount-label input:focus{border-color:#b5a0ff;box-shadow:0 0 0 3px #9b82ff33}.hint{font-size:10px!important;color:#9da5bd!important;margin:4px 0 12px}
+
+.case.free-case{border-color:#5b9e8a;background:linear-gradient(145deg,#142b2c,#151b2e 65%)}.case.free-case .art{filter:drop-shadow(0 0 16px #59e0b088)}.case button:disabled{opacity:.55;cursor:not-allowed;filter:grayscale(.4)}
+
+.flight-track{height:22px;position:relative;background:#252e49;border:1px solid #59658b;border-radius:20px;margin:18px 4px;overflow:hidden}.flight-zone{position:absolute;top:0;bottom:0;background:#238b67aa;border-left:2px solid #66efb4;border-right:2px solid #66efb4}.flight-marker{position:absolute;top:-3px;width:8px;height:26px;border-radius:5px;background:#ffe28c;box-shadow:0 0 10px #ffe28c;transform:translateX(-50%)}#mineBegin,#planeBegin{margin:8px auto 14px}.stage .hint{max-width:520px;margin:8px auto 14px}
