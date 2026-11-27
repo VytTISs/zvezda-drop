@@ -1,51 +1,40 @@
-🎁
-GIFT CASE
-TELEGRAM SIMULATOR
-🪙
-500
-БЕСПЛАТНЫЙ СИМУЛЯТОР
-Открывай кейсы.
-Собирай подарки.
-Виртуальные Telegram-подарки для твоей коллекции.
+lator</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand"><span class="brand-icon">🎁</span><div><b>GIFT CASE</b><small>TELEGRAM SIMULATOR</small></div></div>
+      <div class="balance"><span>🪙</span><b id="balance">500</b></div>
+    </header>
 
-NO DEPOSIT
-VIRTUAL ITEMS
-JUST FOR FUN
-ВЫБИРАЙ КЕЙС
-Коллекция кейсов
-05 CASES
-🧸
-Bear Case
-Подарки с милыми персонажами
+    <section class="hero">
+      <div class="eyebrow">БЕСПЛАТНЫЙ СИМУЛЯТОР</div>
+      <h1>Открывай кейсы.<br><span>Собирай подарки.</span></h1>
+      <p>Виртуальные Telegram-подарки для твоей коллекции.</p>
+      <div class="hero-tags"><span>NO DEPOSIT</span><span>VIRTUAL ITEMS</span><span>JUST FOR FUN</span></div>
+    </section>
 
-🪙 80
-Открыть
-💍
-Luxury Case
-Редкие и ценные находки
+    <section class="section-head"><div><small>ВЫБИРАЙ КЕЙС</small><h2>Коллекция кейсов</h2></div><span class="case-count">05 CASES</span></section>
+    <main id="cases" class="case-grid"></main>
 
-🪙 180
-Открыть
-❤️
-Heart Case
-Коллекция сердечек
+    <section id="opening" class="opening hidden">
+      <div class="opening-top"><span>ОТКРЫТИЕ КЕЙСА</span><button id="closeOpening" aria-label="Закрыть">✕</button></div>
+      <h2 id="openingTitle">Bear Case</h2>
+      <p class="muted">Подарок уже близко...</p>
+      <div class="reel-window"><div class="reel-line"></div><div id="reel" class="reel"></div></div>
+      <div id="result" class="result hidden"></div>
+      <button id="openAgain" class="primary hidden">Открыть ещё раз</button>
+    </section>
 
-🪙 100
-Открыть
-🐸
-Pepe Case
-Кейс с лягушкой Pepe
+    <section class="inventory-section">
+      <div class="section-head"><div><small>ТВОИ НАХОДКИ</small><h2>Моя коллекция</h2></div><span id="inventoryCount" class="case-count">0 GIFTS</span></div>
+      <div id="inventory" class="inventory empty">Пока пусто. Открой первый кейс!</div>
+    </section>
 
-🪙 220
-Открыть
-🎁
-Mystery Case
-Сюрприз из разных коллекций
-
-🪙 140
-Открыть
-ТВОИ НАХОДКИ
-Моя коллекция
-0 GIFTS
-Пока пусто. Открой первый кейс!
-Это фанатский симулятор. Подарки, баланс и открытия виртуальные и не связаны с аккаунтом или маркетплейсом Telegram.
+    <footer>Это фанатский симулятор. Подарки, баланс и открытия виртуальные и не связаны с аккаунтом или маркетплейсом Telegram.</footer>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
